@@ -1,6 +1,8 @@
+# filepath: c:\Users\isaac.enobun\Desktop\fixdesk_api\fixdesk\fixdesk_api\middleware.py
 import threading
 from django.core.exceptions import ImproperlyConfigured
 from django.http import Http404
+from django.conf import settings  # Add this import
 
 _thread_locals = threading.local()
 
@@ -13,6 +15,9 @@ def set_current_tenant(tenant):
 class TenantMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
+        # Validate that TENANT_DOMAIN is set
+        if not hasattr(settings, 'TENANT_DOMAIN'):
+            raise ImproperlyConfigured("TENANT_DOMAIN must be set in settings.")
 
     def __call__(self, request):
         from .models import Tenant  # Import here to avoid circular import
@@ -35,9 +40,11 @@ class TenantMiddleware:
     def get_subdomain(self, host):
         """
         Extract subdomain from host.
-        Assumes domain is like subdomain.api.yoursaas.com
+        Dynamically checks against TENANT_DOMAIN from settings.
         """
-        parts = host.split('.')
-        if len(parts) >= 3 and parts[-2] + '.' + parts[-1] == 'api.yoursaas.com':
-            return parts[0]
+        domain = settings.TENANT_DOMAIN
+        if host.endswith('.' + domain):
+            parts = host.split('.')
+            if len(parts) > len(domain.split('.')):
+                return parts[0]
         return None

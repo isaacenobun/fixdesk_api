@@ -21,9 +21,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    ".api.yoursaas.com",
-    "localhost",
-    "127.0.0.1",
+    ".fixdesk-api.onrender.com",
 ]
 
 CSRF_TRUSTED_ORIGINS = []

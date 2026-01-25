@@ -24,6 +24,8 @@ ALLOWED_HOSTS = [
     ".fixdesk-api.onrender.com",
 ]
 
+TENANT_DOMAIN = 'fixdesk-api.onrender.com'
+
 CSRF_TRUSTED_ORIGINS = []
 
 # CORS_ALLOWED_ORIGINS = [

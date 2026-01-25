@@ -22,6 +22,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     ".fixdesk-api.onrender.com",
+    ".app.fixdesk.ng",
 ]
 
 TENANT_DOMAIN = 'fixdesk-api.onrender.com'

@@ -1,0 +1,18 @@
+runtime: python310
+entrypoint: gunicorn -b :$PORT fixdesk.wsgi --timeout 120 --workers 2 --threads 4
+
+automatic_scaling:
+  min_instances: 0
+  # min_idle_instances: 1
+  # max_idle_instances: 2
+  # min_pending_latency: 100ms
+
+env_variables:
+  DJANGO_SETTINGS_MODULE: "fixdesk.settings"
+  SECRET_KEY: "django-insecure-&ym(t&0=mdyh!p3$dv)i+1so61b3$1src4@*0itmee8-w8wicm"
+  ALLOWED_HOSTS: "*"
+  DEBUG: "true"
+
+handlers:
+- url: /.*
+  script: auto

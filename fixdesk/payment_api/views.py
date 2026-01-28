@@ -114,7 +114,7 @@ class PaystackWebhookAPIView(APIView):
             elif metadata.get("type") == "card_authorization":
 
                 Authorizations.objects.create(
-                    organisation = Organization.objects.get(id=metadata.get("organization")),
+                    organization = Organization.objects.get(id=metadata.get("organization")),
                     url = authorization.get("authorization_url"),
                     access_code = data.get("access_code"),
                     reference = data.get("reference"),

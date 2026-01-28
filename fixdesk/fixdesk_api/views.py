@@ -18,8 +18,9 @@ load_dotenv()
 import random
 import string
 
-from .models import User, Issues, Conversations, VerificationCode, Organization, Subscription
-from .serializers import MyTokenObtainPairSerializer, UserSerializer, IssuesSerializer, ConversationsSerializer, VerificationCodeSerializer, OrganizationSerializer, SubscriptionSerializer
+from .models import User, Issues, Conversations, VerificationCode, Organization, Subscription, Payment, Authorizations, Webhook, Tasks, Comments
+
+from .serializers import MyTokenObtainPairSerializer, UserSerializer, IssuesSerializer, ConversationsSerializer, VerificationCodeSerializer, OrganizationSerializer, SubscriptionSerializer, PaymentSerializer, AuthorizationsSerializer, WebhookSerializer, TasksSerializer, CommentsSerializer
 
 def send_mail(subject, to_email, context, type):
         port = 587
@@ -35,11 +36,19 @@ def send_mail(subject, to_email, context, type):
             html_content = render_to_string('user_verification.html', context)
         elif type == "message":
             html_content = render_to_string('message_notification.html', context)
+        elif type == "issue_status":
+            html_content = render_to_string('issue_status_notification.html', context)
+        elif type == "task":
+            html_content = render_to_string('task_notification.html', context)
+        elif type == "task_status":
+            html_content = render_to_string('task_status_notification.html', context)
+        elif type == "comment":
+            html_content = render_to_string('comment_notification.html', context)
 
         msg = EmailMessage()
         msg['Subject'] = subject
-        msg['From'] = "company@fixdesk.ng"
-        msg['To'] = [to_email]
+        msg['From'] = f"HelpDesk <{context.get('organization')}@fixdesk.ng>"
+        msg['To'] = to_email
         msg.set_content(html_content, subtype='html')
         
         try:
@@ -74,6 +83,27 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['type']
 
+class PaymentViewSet(viewsets.ModelViewSet):
+    queryset = Payment.objects.select_related('organization', 'subscription')
+    serializer_class = PaymentSerializer
+    http_method_names = ['get', 'post', 'put', 'patch']
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['organization', 'subscription', 'status']
+
+class AuthorizationsViewSet(viewsets.ModelViewSet):
+    queryset = Authorizations.objects.select_related('organization')
+    serializer_class = AuthorizationsSerializer
+    http_method_names = ['get', 'post', 'put', 'patch']
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['organization', 'status', 'auth_type']
+
+class WebhookViewSet(viewsets.ModelViewSet):
+    queryset = Webhook.objects.select_related('organization')
+    serializer_class = WebhookSerializer
+    http_method_names = ['get', 'post', 'put', 'patch']
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['organization', 'event', 'status']
+
 class OrganizationViewSet(viewsets.ModelViewSet):
     queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
@@ -82,39 +112,86 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     filterset_fields = ['name','slug']
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+    queryset = User.objects.select_related('organization')
     serializer_class = UserSerializer
     http_method_names = ['get', 'post', 'put', 'patch']
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['email']
 
 class IssuesViewSet(viewsets.ModelViewSet):
-    queryset = Issues.objects.all()
+    queryset = Issues.objects.select_related('organization', 'reported_by')
     serializer_class = IssuesSerializer
     http_method_names = ['get', 'post', 'put', 'patch']
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['status', 'reported_by']
+
+    def partial_update(self, request, *args, **kwargs):
+        issue = self.get_object()
+        new_status = request.data.get('status')
+
+        # Handle status change independently
+        if new_status and new_status != issue.status:
+            issue.status = new_status
+            issue.save(update_fields=['status'])
+
+            context = {
+                'organization': issue.organization.slug,
+                'ticket_id': f'TK-{issue.id[:3]}',
+                'title': issue.title,
+                'description': issue.description,
+                'date': issue.created_at,
+                'status': new_status
+            }
+
+            status_messages = {
+                'completed': (f'Issue TK-{issue.id[:3]} Resolved', 'issue_status'),
+                'pending': (f'Issue TK-{issue.id[:3]} Reopened', 'issue_status'),
+            }
+
+            if new_status in status_messages:
+                subject, mail_type = status_messages[new_status]
+                send_mail(
+                    subject=subject,
+                    to_email=issue.reported_by.email,
+                    context=context,
+                    type=mail_type
+                )
+
+        # Handle other fields separately
+        data = {k: v for k, v in request.data.items() if k != 'status'}
+        if data:
+            serializer = self.get_serializer(issue, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response({'status': 'updated'}, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         response = super().create(request, *args, **kwargs)
-        issue = Issues.objects.get(id=response.data['id'])
+        issue = Issues.objects.select_related('organization', 'reported_by').get(id=response.data['id'])
         
         context = {
-            'ticket_id': 'CRC-'+str(issue.id),
+            'organization': issue.organization.slug,
+            'ticket_id': 'TK-'+str(issue.id)[:3],
             'title': issue.title,
             'description': issue.description,
             'reported_by': issue.reported_by.first_name + ' ' + issue.reported_by.last_name,
             'date': issue.created_at,
         }
 
-        # To Admin
+        # To Admins - Use values_list to avoid loading full User objects
+        admin_emails = list(User.objects.filter(
+            organization=issue.organization, 
+            role='admin'
+        ).values_list('email', flat=True))
+        
         if send_mail(
             subject="New Issue Reported",
-            # to_email= technology.admin_email,
-            to_email="isaac.enobun@crccreditbureau.net",
+            to_email=admin_emails,
             context=context,
             type="admin"
         ):
@@ -125,8 +202,7 @@ class IssuesViewSet(viewsets.ModelViewSet):
         # To User
         if send_mail(
             subject="Issue Reported Successfully",
-            # to_email=issue.reported_by.email,
-            to_email="isaac.enobun@crccreditbureau.net",
+            to_email=issue.reported_by.email,
             context=context,
             type="user"
         ):
@@ -137,7 +213,7 @@ class IssuesViewSet(viewsets.ModelViewSet):
         return response
 
 class ConversationsViewSet(viewsets.ModelViewSet):
-    queryset = Conversations.objects.all()
+    queryset = Conversations.objects.select_related('organization', 'issue', 'sender').prefetch_related('mentioned_users')
     serializer_class = ConversationsSerializer
     http_method_names = ['get', 'post', 'put', 'patch']
     filter_backends = [DjangoFilterBackend]
@@ -145,21 +221,20 @@ class ConversationsViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         message = request.data.get('message')
-        issue = Issues.objects.get(id=request.data.get('issue'))
+        issue = Issues.objects.select_related('organization', 'reported_by').get(id=request.data.get('issue'))
         sender = User.objects.get(id=request.data.get('sender'))
 
         if sender.role == 'admin':
-
             context = {
+                'organization': issue.organization.slug,
                 'message': message,
-                'ticket_id': 'CRC-'+str(issue.id),
+                'ticket_id': 'TK-'+str(issue.id)[:3],
                 'sender': sender.first_name + ' ' + sender.last_name,
             }
 
             if send_mail(
-                subject="New Message on Issue (ID: CRC-"+str(issue.id)+")",
-                # to_email=issue.reported_by.email,
-                to_email="isaac.enobun@crccreditbureau.net",
+                subject=f"New Message on Issue (ID: {context.get('ticket_id')})",
+                to_email=[issue.reported_by.email],
                 context=context,
                 type="message"
             ):
@@ -171,15 +246,20 @@ class ConversationsViewSet(viewsets.ModelViewSet):
 
         else:
             context = {
+                'organization': issue.organization.slug,
                 'message': message,
-                'ticket_id': 'CRC-'+str(issue.id),
-                'sender': issue.reported_by.first_name + ' ' + issue.reported_by.last_name,
+                'ticket_id': 'TK-'+str(issue.id)[:3],
+                'sender': sender.first_name + ' ' + sender.last_name,
             }
 
+            admin_emails = list(User.objects.filter(
+                organization=issue.organization, 
+                role='admin'
+            ).values_list('email', flat=True))
+            
             if send_mail(
-                subject="New Message on Issue (ID: CRC-"+str(issue.id)+")",
-                # to_email=technology.admin_email,
-                to_email="isaac.enobun@crccreditbureau.net",
+                subject=f"New Message on Issue (ID: {context.get('ticket_id')})",
+                to_email=admin_emails,
                 context=context,
                 type="message"
             ):
@@ -188,20 +268,116 @@ class ConversationsViewSet(viewsets.ModelViewSet):
                 print("Failed to send message notification to admin.")
 
             return super().create(request, *args, **kwargs)
+        
+class TasksViewSet(viewsets.ModelViewSet):
+    queryset = Tasks.objects.select_related('organization').prefetch_related('assigned_to')
+    serializer_class = TasksSerializer
+    http_method_names = ['get', 'post', 'put', 'patch']
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['status', 'assigned_to']
+
+    def partial_update(self, request, *args, **kwargs):
+        task = self.get_object()
+        new_status = request.data.get('status')
+        id = request.data.get('id')
+
+        # Handle status change independently
+        if new_status and new_status != task.status:
+            task.status = new_status
+            task.save(update_fields=['status'])
+
+        context = {
+            'organization': task.organization.slug,
+            'task_id': f'TSK-{id[:3]}',
+            'title': task.title,
+            'description': task.description,
+            'due_date': task.due_date,
+            'status': new_status
+        }
+
+        status_messages = {
+            'completed': (f'{context.get("task_id")} Completed', 'task_status'),
+            'pending': (f'Task {context.get("task_id")} Reopened', 'task_status'),
+        }
+
+        if new_status in status_messages:
+            subject, mail_type = status_messages[new_status]
+            for user in task.assigned_to.all():
+                if send_mail(
+                    subject=subject,
+                    to_email=user.email,
+                    context=context,
+                    type=mail_type
+                ):
+                    print(f"Task status notification sent successfully to {user.email}.")
+                else:
+                    print(f"Failed to send task status notification to {user.email}.")
+        
+        # Handle other fields separately
+        data = {k: v for k, v in request.data.items() if k != 'status'}
+        if data:
+            serializer = self.get_serializer(task, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response({'status': 'updated'}, status=status.HTTP_200_OK)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        response = super().create(request, *args, **kwargs)
+        task = Tasks.objects.select_related('organization', 'assigned_by').prefetch_related('assigned_to').get(id=response.data['id'])
+        assigned_users = task.assigned_to.all()
+
+        context = {
+            'organization': task.organization.slug,
+            'assigned_by': task.assigned_by.first_name + ' ' + task.assigned_by.last_name,
+            'assigned_to': ', '.join([user.first_name + ' ' + user.last_name for user in assigned_users]),
+            'task_id': 'TSK-'+str(task.id)[:3],
+            'title': task.title,
+            'description': task.description,
+            'priority': task.priority,
+            'due_date': task.due_date,
+        }
+
+        for user in assigned_users:
+            if send_mail(
+                subject="New Task Assigned",
+                to_email=[user.email],
+                context=context,
+                type="task"
+            ):
+                print(f"Task assignment notification sent successfully to {user.email}.")
+            else:
+                print(f"Failed to send task assignment notification to {user.email}.")
+
+        return response
+
+class CommentsViewSet(viewsets.ModelViewSet):
+    queryset = Comments.objects.select_related('organization', 'task', 'commenter').prefetch_related('mentioned_users')
+    serializer_class = CommentsSerializer
+    http_method_names = ['get', 'post', 'put', 'patch']
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['task', 'commenter']
 
 def generate_verification_code():
     """Generates a unique 5-digit code for VerificationCode."""
+    import secrets
     length = 5
     characters = string.digits 
+    max_attempts = 50
+    attempts = 0
     
-    while True:
-        code = ''.join(random.choice(characters) for _ in range(length))
+    while attempts < max_attempts:
+        code = ''.join(secrets.choice(characters) for _ in range(length))
         if not VerificationCode.objects.filter(code=code).exists():
-            break
-    return code
+            return code
+        attempts += 1
 
 class VerificationCodeViewSet(viewsets.ModelViewSet):
-    queryset = VerificationCode.objects.all()
+    queryset = VerificationCode.objects.select_related('user')
     serializer_class = VerificationCodeSerializer
     http_method_names = ['get', 'post', 'put', 'patch']
     filter_backends = [DjangoFilterBackend]
@@ -213,13 +389,14 @@ class VerificationCodeViewSet(viewsets.ModelViewSet):
         user = User.objects.get(id=request.data.get('user'))
 
         context = {
+            'organization': user.organization.slug,
             'verification_code': code
         }
 
         if send_mail(
             subject="Reset your Helpdesk Password",
             # to_email=user.email,
-            to_email="isaac.enobun@crccreditbureau.net",
+            to_email=["isaacenobun@gmail.com"],
             context=context,
             type="verify"
         ):

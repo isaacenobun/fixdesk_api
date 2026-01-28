@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 
-from .models import User, Issues, Conversations, VerificationCode, Organization, Subscription
+from .models import User, Issues, Conversations, VerificationCode, Organization, Subscription, Payment, Authorizations, Webhook, Tasks, Comments
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
@@ -22,16 +22,31 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = ['id', 'type', 'created_at']
 
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['id', 'organization', 'subscription', 'amount', 'payment_date', 'status']
+
+class AuthorizationsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Authorizations
+        fields = ['id', 'organization', 'url', 'access_code', 'reference', 'auth_type', 'status', 'authorization_code', 'created_at']
+
+class WebhookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Webhook
+        fields = ['id', 'organization', 'event', 'payload', 'status', 'received_at']
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ['id', 'name', 'slug', 'subscription', 'created_at']
+        fields = ['id', 'name', 'slug', 'created_at']
 
 class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'role', 'department', 'floor', 'created_at', 'password']
+        fields = ['id', 'organization', 'first_name', 'last_name', 'email', 'role', 'department', 'floor', 'created_at', 'password']
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
@@ -49,7 +64,7 @@ class IssuesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Issues
-        fields = ['id', 'title', 'description', 'status', 'created_at', 'reported_by', 'conversations']
+        fields = ['id', 'organization', 'title', 'description', 'priority', 'status', 'created_at', 'reported_by', 'resolved_on', 'conversations']
 
     def get_conversations(self, obj):
         qs = obj.conversations.all().order_by('timestamp')
@@ -59,6 +74,22 @@ class ConversationsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Conversations
         fields = ['id', 'issue', 'message', 'sender', 'mentioned_users', 'timestamp']
+
+class TasksSerializer(serializers.ModelSerializer):
+    comments = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Tasks
+        fields = ['id', 'organization', 'title', 'description', 'priority', 'assigned_by', 'assigned_to', 'status', 'due_date', 'created_at', 'comments']
+
+    def get_comments(self, obj):
+        qs = obj.comments.all().order_by('timestamp')
+        return CommentsSerializer(qs, many=True).data
+
+class CommentsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comments
+        fields = ['id', 'organization', 'task', 'message', 'commenter', 'mentioned_users', 'timestamp']
 
 class VerificationCodeSerializer(serializers.ModelSerializer):
     class Meta:

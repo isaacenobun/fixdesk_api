@@ -71,10 +71,10 @@ class Payment(UUIDModel):
         ordering = ['-payment_date']
 
     def __str__(self):
-        return f"{self.organization} - {self.amount} {self.currency}"
+        return f"{self.organization} - {self.amount}"
     
 class Authorizations(UUIDModel):
-    organisation = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name="authorizations")
+    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name="authorizations")
     url = models.URLField(max_length=200, null=True, blank=True)
     access_code = models.CharField(max_length=100, null=True, blank=True)
     reference = models.CharField(max_length=100, null=True, blank=True)
@@ -125,7 +125,7 @@ class User(AbstractUser):
     email = models.EmailField(unique=True, null=True, blank=True)
     role = models.CharField(max_length=10, default='staff', db_index=True)
     department = models.CharField(max_length=50, null=True, blank=True)
-    floor = models.CharField(max_length=10, null=True, blank=True)
+    floor = models.CharField(max_length=10, null=True, blank=True) #Remove this later
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     groups = models.ManyToManyField(
@@ -185,7 +185,8 @@ class Tasks(UUIDModel):
     title = models.CharField(max_length=100)
     description = models.TextField()
     priority = models.CharField(max_length=20, default='low', db_index=True)
-    assigned_to = models.ManyToManyField(User, on_delete=models.CASCADE, related_name='tasks', blank=True)
+    assigned_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_tasks', null=True, blank=True)
+    assigned_to = models.ManyToManyField(User, related_name='tasks')
     status = models.CharField(max_length=20, default='pending', db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     due_date = models.DateTimeField(null=True, blank=True)

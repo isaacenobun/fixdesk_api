@@ -1,5 +1,4 @@
 import os
-from django.shortcuts import render
 from rest_framework import viewsets
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -19,8 +18,8 @@ load_dotenv()
 import random
 import string
 
-from .models import User, Issues, Conversations, VerificationCode, Tenant
-from .serializers import MyTokenObtainPairSerializer, UserSerializer, IssuesSerializer, ConversationsSerializer, VerificationCodeSerializer, TenantSerializer
+from .models import User, Issues, Conversations, VerificationCode, Organization, Subscription
+from .serializers import MyTokenObtainPairSerializer, UserSerializer, IssuesSerializer, ConversationsSerializer, VerificationCodeSerializer, OrganizationSerializer, SubscriptionSerializer
 
 def send_mail(subject, to_email, context, type):
         port = 587
@@ -39,7 +38,7 @@ def send_mail(subject, to_email, context, type):
 
         msg = EmailMessage()
         msg['Subject'] = subject
-        msg['From'] = "helpdesk@creditreferencenigeria.net"
+        msg['From'] = "company@fixdesk.ng"
         msg['To'] = [to_email]
         msg.set_content(html_content, subtype='html')
         
@@ -67,6 +66,20 @@ class MyTokenObtainPairView(TokenObtainPairView):
     Custom TokenObtainPairView using MyTokenObtainPairSerializer.
     """
     serializer_class = MyTokenObtainPairSerializer
+
+class SubscriptionViewSet(viewsets.ModelViewSet):
+    queryset = Subscription.objects.all()
+    serializer_class = SubscriptionSerializer
+    http_method_names = ['get', 'post', 'put', 'patch']
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['type']
+
+class OrganizationViewSet(viewsets.ModelViewSet):
+    queryset = Organization.objects.all()
+    serializer_class = OrganizationSerializer
+    http_method_names = ['get', 'post', 'put', 'patch']
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['name','slug']
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -217,21 +230,3 @@ class VerificationCodeViewSet(viewsets.ModelViewSet):
         verification_code = VerificationCode.objects.create(user=user, code=code)
         serializer = self.get_serializer(verification_code)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-class TenantViewSet(viewsets.ModelViewSet):
-    queryset = Tenant.objects.all()
-    serializer_class = TenantSerializer
-    http_method_names = ['get', 'post', 'put', 'patch', 'delete']
-    # permission_classes = [IsAuthenticated]
-
-    # def get_queryset(self):
-    #     # Restrict to superusers or users with 'admin' role
-    #     if self.request.user.is_superuser or self.request.user.role == 'admin':
-    #         return Tenant.objects.all()
-    #     return Tenant.objects.none()  # No access for others
-
-    # def perform_create(self, serializer):
-    #     # Ensure only superusers/admins can create
-    #     if not (self.request.user.is_superuser or self.request.user.role == 'admin'):
-    #         raise PermissionError("Only admins can create tenants.")
-    #     serializer.save()

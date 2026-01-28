@@ -2,8 +2,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 
-from .models import User, Issues, Conversations, VerificationCode, Tenant
-from .middleware import get_current_tenant
+from .models import User, Issues, Conversations, VerificationCode, Organization, Subscription
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
@@ -17,22 +16,29 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             data = super().validate(attrs)
             return data
         raise serializers.ValidationError("Invalid email or password")
+    
+class SubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = ['id', 'type', 'created_at']
+
+class OrganizationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ['id', 'name', 'slug', 'subscription', 'created_at']
 
 class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'role', 'department', 'floor', 'created_at', 'password', 'tenant']
-        extra_kwargs = {'password': {'write_only': True}, 'tenant': {'read_only': True}}
+        fields = ['id', 'first_name', 'last_name', 'email', 'role', 'department', 'floor', 'created_at', 'password']
+        extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         instance = self.Meta.model(**validated_data)
         
         instance.is_active = True
-        tenant = get_current_tenant()
-        if tenant:
-            instance.tenant = tenant
         if password is not None:
             instance.set_password(password)
         instance.save()
@@ -43,45 +49,18 @@ class IssuesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Issues
-        fields = ['id', 'title', 'description', 'status', 'created_at', 'reported_by', 'conversations', 'tenant']
-        extra_kwargs = {'tenant': {'read_only': True}}
+        fields = ['id', 'title', 'description', 'status', 'created_at', 'reported_by', 'conversations']
 
     def get_conversations(self, obj):
         qs = obj.conversations.all().order_by('timestamp')
         return ConversationsSerializer(qs, many=True).data
 
-    def create(self, validated_data):
-        tenant = get_current_tenant()
-        if tenant:
-            validated_data['tenant'] = tenant
-        return super().create(validated_data)
-
 class ConversationsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Conversations
-        fields = ['id', 'issue', 'message', 'sender', 'timestamp', 'tenant']
-        extra_kwargs = {'tenant': {'read_only': True}}
-
-    def create(self, validated_data):
-        tenant = get_current_tenant()
-        if tenant:
-            validated_data['tenant'] = tenant
-        return super().create(validated_data)
+        fields = ['id', 'issue', 'message', 'sender', 'mentioned_users', 'timestamp']
 
 class VerificationCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = VerificationCode
-        fields = ['id', 'used', 'user', 'code', 'created_at', 'tenant']
-        extra_kwargs = {'tenant': {'read_only': True}}
-
-    def create(self, validated_data):
-        tenant = get_current_tenant()
-        if tenant:
-            validated_data['tenant'] = tenant
-        return super().create(validated_data)
-
-class TenantSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Tenant
-        fields = ['id', 'name', 'slug', 'is_active', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'used', 'user', 'code', 'created_at']

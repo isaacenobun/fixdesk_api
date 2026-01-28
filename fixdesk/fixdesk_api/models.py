@@ -1,15 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
-from .middleware import get_current_tenant
 
 import uuid
-
-class TenantManager(models.Manager):
-    def get_queryset(self):
-        tenant = get_current_tenant()
-        if tenant:
-            return super().get_queryset().filter(tenant=tenant)
-        return super().get_queryset()
     
 class UUIDModel(models.Model):
     id = models.UUIDField(
@@ -21,31 +13,8 @@ class UUIDModel(models.Model):
     class Meta:
         abstract = True
 
-class TenantModel(UUIDModel):
-    tenant = models.ForeignKey('Tenant', on_delete=models.CASCADE, db_index=True)
-
-    objects = TenantManager()
-
-    class Meta:
-        abstract = True
-
-class Tenant(UUIDModel):
-    name = models.CharField(max_length=255)
-    slug = models.SlugField(unique=True)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.slug
-
 class UserManager(BaseUserManager):
     use_in_migrations = True
-
-    def get_queryset(self):
-        tenant = get_current_tenant()
-        if tenant:
-            return super().get_queryset().filter(tenant=tenant)
-        return super().get_queryset()
 
     def _create_user(self, email, password, **extra_fields):
         if not email:
@@ -75,15 +44,80 @@ class UserManager(BaseUserManager):
             raise ValueError('Superuser must have is_superuser=True.')
 
         return self._create_user(email, password, **extra_fields)
+    
+class Subscription(UUIDModel):
+    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name='subscriptions', db_index=True)
+    plan = models.CharField(max_length=50, default='monthly', db_index=True)
+    status = models.CharField(max_length=20, default='active', db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    current_period_start = models.DateTimeField(null=True, blank=True)
+    current_period_end = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
 
-# Create your models here.
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.organization
+    
+class Payment(UUIDModel):
+    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name='payments', db_index=True)
+    subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, related_name='payments', blank=True, null=True, db_index=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateTimeField(auto_now_add=True, db_index=True)
+    status = models.CharField(max_length=20, default='pending', db_index=True)
+
+    class Meta:
+        ordering = ['-payment_date']
+
+    def __str__(self):
+        return f"{self.organization} - {self.amount} {self.currency}"
+    
+class Authorizations(UUIDModel):
+    organisation = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name="authorizations")
+    url = models.URLField(max_length=200, null=True, blank=True)
+    access_code = models.CharField(max_length=100, null=True, blank=True)
+    reference = models.CharField(max_length=100, null=True, blank=True)
+    auth_type = models.CharField(max_length=20, default='card')
+    status = models.CharField(max_length=10, default="inactive")
+    authorization_code = models.CharField(max_length=50, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return str(self.user_id)
+    
+class Webhook(UUIDModel):
+    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name="webhooks", db_index=True)
+    event = models.CharField(max_length=100)
+    payload = models.JSONField(blank=True, null=True)
+    status = models.CharField(max_length=20, default='pending', db_index=True)
+    received_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    def __str__(self):
+        return self.event
+    
+class Organization(UUIDModel):
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=100, unique=True, db_index=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+    
 class User(AbstractUser):
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
         editable=False
     )
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='users', null=True, blank=True)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='users', null=True, blank=True)
     username = None
     objects = UserManager()
     first_name = models.CharField(max_length=30, null=True, blank=True)
@@ -116,7 +150,8 @@ class User(AbstractUser):
     def __str__(self):
         return self.email
 
-class Issues(TenantModel):
+class Issues(UUIDModel):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='issues', db_index=True)
     title = models.CharField(max_length=100)
     description = models.TextField()
     status = models.CharField(max_length=20, default='pending', db_index=True)
@@ -130,10 +165,12 @@ class Issues(TenantModel):
     def __str__(self):
         return self.title
 
-class Conversations(TenantModel):
+class Conversations(UUIDModel):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='conversations', db_index=True)
     issue = models.ForeignKey('Issues', on_delete=models.CASCADE, related_name='conversations', db_index=True)
     message = models.TextField()
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
+    mentioned_users = models.ManyToManyField(User, related_name='mentioned_in_messages', blank=True)
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
@@ -142,7 +179,7 @@ class Conversations(TenantModel):
     def __str__(self):
         return f"{self.message[:25]}..."
 
-class VerificationCode(TenantModel):
+class VerificationCode(UUIDModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="verification_codes", db_index=True)
     code = models.CharField(max_length=6, unique=True, editable=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)

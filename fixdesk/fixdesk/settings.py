@@ -23,15 +23,15 @@ DEBUG = True
 ALLOWED_HOSTS = [
     ".fixdesk-api.onrender.com",
     ".app.fixdesk.ng",
+    "localhost",
+    "127.0.0.1"
 ]
 
-TENANT_DOMAIN = 'fixdesk-api.onrender.com'
+CSRF_TRUSTED_ORIGINS = ["https://*.fixdesk-api.onrender.com", "https://*.app.fixdesk.ng", "https://fixdesk.ng"]
 
-CSRF_TRUSTED_ORIGINS = []
-
-# CORS_ALLOWED_ORIGINS = [
-#     "",
-# ]
+CORS_ALLOWED_ORIGINS = [
+    "https://fixdesk.ng",
+]
 
 # Application definition
 
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'fixdesk_api',
+    'payment_api',
     'rest_framework',
     'rest_framework_simplejwt',
     'django_filters',
@@ -59,7 +60,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'fixdesk_api.middleware.TenantMiddleware',
 ]
 
 ROOT_URLCONF = 'fixdesk.urls'
@@ -156,3 +156,10 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=200),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=400),
 }
+
+PAYSTACK_SECRET_KEY = os.getenv('PAYSTACK_SECRET_KEY')
+PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY')
+
+PAYSTACK_API_BASE_URL = os.getenv('PAYSTACK_BASE_URL')
+FIXDESK_BASE_URL = os.getenv('TAPNGO_BASE_URL')
+    

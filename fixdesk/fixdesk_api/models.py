@@ -154,6 +154,7 @@ class Issues(UUIDModel):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='issues', db_index=True)
     title = models.CharField(max_length=100)
     description = models.TextField()
+    priority = models.CharField(max_length=20, default='low', db_index=True)
     status = models.CharField(max_length=20, default='pending', db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     reported_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reported_issues')
@@ -171,6 +172,36 @@ class Conversations(UUIDModel):
     message = models.TextField()
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
     mentioned_users = models.ManyToManyField(User, related_name='mentioned_in_messages', blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['timestamp']
+
+    def __str__(self):
+        return f"{self.message[:25]}..."
+    
+class Tasks(UUIDModel):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='tasks', db_index=True)
+    title = models.CharField(max_length=100)
+    description = models.TextField()
+    priority = models.CharField(max_length=20, default='low', db_index=True)
+    assigned_to = models.ManyToManyField(User, on_delete=models.CASCADE, related_name='tasks', blank=True)
+    status = models.CharField(max_length=20, default='pending', db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    due_date = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+    
+class Comments(UUIDModel):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='comments', db_index=True)
+    task = models.ForeignKey('Tasks', on_delete=models.CASCADE, related_name='comments', db_index=True)
+    message = models.TextField()
+    commenter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
+    mentioned_users = models.ManyToManyField(User, related_name='mentioned_in_comments', blank=True)
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

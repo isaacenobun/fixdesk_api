@@ -125,7 +125,6 @@ class User(AbstractUser):
     email = models.EmailField(unique=True, null=True, blank=True)
     role = models.CharField(max_length=10, default='staff', db_index=True)
     department = models.CharField(max_length=50, null=True, blank=True)
-    floor = models.CharField(max_length=10, null=True, blank=True) #Remove this later
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     groups = models.ManyToManyField(

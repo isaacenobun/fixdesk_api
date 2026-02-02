@@ -362,6 +362,34 @@ class CommentsViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['task', 'commenter']
 
+    def create(self, request, *args, **kwargs):
+        comment_text = request.data.get('message')
+        task = Tasks.objects.select_related('organization').get(id=request.data.get('task'))
+        commenter = User.objects.get(id=request.data.get('commenter'))
+
+        context = {
+            'organization': task.organization.slug,
+            'comment': comment_text,
+            'task_id': 'TSK-'+str(task.id)[:3],
+            'commenter': commenter.first_name + ' ' + commenter.last_name,
+        }
+
+        all_users = set(task.assigned_to.values_list('id', flat=True)) | set(request.data.get('mentioned_users', []))
+        all_users = User.objects.filter(id__in=all_users)
+        for user in all_users:
+            if user.id != commenter.id:
+                if send_mail(
+                    subject=f"New Comment on Task (ID: {context.get('task_id')})",
+                    to_email=[user.email],
+                    context=context,
+                    type="comment"
+                ):
+                    print(f"Comment notification sent successfully to {user.email}.")
+                else:
+                    print(f"Failed to send comment notification to {user.email}.")
+
+        return super().create(request, *args, **kwargs)
+
 def generate_verification_code():
     """Generates a unique 5-digit code for VerificationCode."""
     import secrets

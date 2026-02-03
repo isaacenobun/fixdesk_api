@@ -1,4 +1,4 @@
-from celery_app import celery
+from fixdesk.fixdesk.celery_app import celery
 import time
 
 @celery.task(bind=True)

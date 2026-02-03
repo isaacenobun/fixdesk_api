@@ -23,14 +23,17 @@ DEBUG = True
 ALLOWED_HOSTS = [
     ".fixdesk-api.onrender.com",
     ".app.fixdesk.ng",
+    "fixdesk.ng",
+    "www.fixdesk.ng",
     "localhost",
     "127.0.0.1"
 ]
 
-CSRF_TRUSTED_ORIGINS = ["https://*.fixdesk-api.onrender.com", "https://*.app.fixdesk.ng", "https://fixdesk.ng"]
+CSRF_TRUSTED_ORIGINS = ["https://*.fixdesk-api.onrender.com", "https://*.app.fixdesk.ng", "https://fixdesk.ng", "https://www.fixdesk.ng"]
 
 CORS_ALLOWED_ORIGINS = [
     "https://fixdesk.ng",
+    "https://www.fixdesk.ng",
 ]
 
 # Application definition

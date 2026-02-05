@@ -21,7 +21,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    "https://fixdeskapi-production.up.railway.app/",
+    "fixdeskapi-production.up.railway.app",
     ".fixdesk-api.onrender.com",
     ".app.fixdesk.ng",
     "fixdesk.ng",

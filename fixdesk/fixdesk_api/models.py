@@ -211,7 +211,7 @@ class Comments(UUIDModel):
         return f"{self.message[:25]}..."
 
 class VerificationCode(UUIDModel):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="verification_codes", db_index=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="verification_codes", null=True, blank=True, db_index=True)
     code = models.CharField(max_length=6, unique=True, editable=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     used = models.BooleanField(default=False, db_index=True)

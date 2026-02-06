@@ -1,3 +1,4 @@
+import email
 import os
 from rest_framework import viewsets
 from django_filters.rest_framework import DjangoFilterBackend
@@ -34,6 +35,8 @@ def send_mail(subject, to_email, context, type):
             html_content = render_to_string('user_notification.html', context)
         elif type == "verify":
             html_content = render_to_string('user_verification.html', context)
+        elif type == "activate":
+            html_content = render_to_string('user_activation.html', context)
         elif type == "message":
             html_content = render_to_string('message_notification.html', context)
         elif type == "issue_status":
@@ -415,23 +418,37 @@ class VerificationCodeViewSet(viewsets.ModelViewSet):
         # Generate a unique verification code
         code = generate_verification_code()
         
-        user = User.objects.get(id=request.data.get('user', None))
+        email = request.data.get('email', None)
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            user = None
 
         context = {
-            'organization': user.organization.slug,
+            'organization': user.organization.slug if user else None,
             'verification_code': code
         }
 
-        if send_mail(
-            subject="Reset your Helpdesk Password",
-            # to_email=user.email,
-            to_email=["isaacenobun@gmail.com"],
-            context=context,
-            type="verify"
-        ):
-            print("Verification code sent successfully.")
+        if user:
+            if send_mail(
+                subject="Reset your Helpdesk Password",
+                to_email=user.email,
+                context=context,
+                type="verify"
+            ):
+                print("Verification code sent successfully.")
+            else:
+                print("Failed to send verification code.")
         else:
-            print("Failed to send verification code.")
+            if send_mail(
+                subject="Activate your account",
+                to_email=email,
+                context=context,
+                type="activate"
+            ):
+                print("Activation code sent successfully.")
+            else:
+                print("Failed to send activation code.")
 
         if user:
             verification_code = VerificationCode.objects.create(user=user, code=code)

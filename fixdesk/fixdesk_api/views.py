@@ -414,7 +414,8 @@ class VerificationCodeViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         # Generate a unique verification code
         code = generate_verification_code()
-        user = User.objects.get(id=request.data.get('user'))
+        
+        user = User.objects.get(id=request.data.get('user', None))
 
         context = {
             'organization': user.organization.slug,
@@ -432,6 +433,9 @@ class VerificationCodeViewSet(viewsets.ModelViewSet):
         else:
             print("Failed to send verification code.")
 
-        verification_code = VerificationCode.objects.create(user=user, code=code)
+        if user:
+            verification_code = VerificationCode.objects.create(user=user, code=code)
+        else:
+            verification_code = VerificationCode.objects.create(code=code)
         serializer = self.get_serializer(verification_code)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

@@ -19,9 +19,9 @@ load_dotenv()
 import random
 import string
 
-from .models import User, Issues, Conversations, VerificationCode, Organization, Subscription, Payment, Authorizations, Webhook, Tasks, Comments
+from .models import User, Issues, Conversations, VerificationCode, Organization, Subscription, Payment, Authorizations, Webhook, Tasks, Comments, Invitation
 
-from .serializers import MyTokenObtainPairSerializer, UserSerializer, IssuesSerializer, ConversationsSerializer, VerificationCodeSerializer, OrganizationSerializer, SubscriptionSerializer, PaymentSerializer, AuthorizationsSerializer, WebhookSerializer, TasksSerializer, CommentsSerializer
+from .serializers import MyTokenObtainPairSerializer, UserSerializer, IssuesSerializer, ConversationsSerializer, VerificationCodeSerializer, OrganizationSerializer, SubscriptionSerializer, PaymentSerializer, AuthorizationsSerializer, WebhookSerializer, TasksSerializer, CommentsSerializer, InvitationSerializer
 
 def send_mail(subject, to_email, context, type):
         port = 587
@@ -455,4 +455,54 @@ class VerificationCodeViewSet(viewsets.ModelViewSet):
         else:
             verification_code = VerificationCode.objects.create(code=code)
         serializer = self.get_serializer(verification_code)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+class InvitationViewSet(viewsets.ModelViewSet):
+    queryset = Invitation.objects.select_related('organization')
+    serializer_class = InvitationSerializer
+    http_method_names = ['get', 'post', 'put', 'patch']
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['email', 'organization']
+
+    def create(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        organization_id = request.data.get('organization')
+        role = request.data.get('role', 'user')
+        department = request.data.get('department', '')
+
+        try:
+            organization = Organization.objects.get(id=organization_id)
+        except Organization.DoesNotExist:
+            return Response({'error': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        token = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
+
+        invitation = Invitation.objects.create(
+            organization=organization,
+            email=email,
+            role=role,
+            department=department,
+            token=token
+        )
+
+        context = {
+            'organization': organization.slug,
+            'email': email,
+            'role': role,
+            'department': department,
+            'token': token,
+            "link": f"https://fixdesk.ng/activate?token={token}"
+        }
+
+        if send_mail(
+            subject=f"Invitation to join {organization.name} on Helpdesk",
+            to_email=email,
+            context=context,
+            type="activate"
+        ):
+            print("Invitation email sent successfully.")
+        else:
+            print("Failed to send invitation email.")
+
+        serializer = self.get_serializer(invitation)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

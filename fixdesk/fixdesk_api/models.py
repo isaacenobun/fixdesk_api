@@ -221,3 +221,18 @@ class VerificationCode(UUIDModel):
     
     def __str__(self):
         return f"{self.code}"
+
+class Invitation(UUIDModel):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='invitations', db_index=True)
+    email = models.EmailField(db_index=True)
+    role = models.CharField(max_length=10, default='staff', db_index=True)
+    department = models.CharField(max_length=50, null=True, blank=True)
+    token = models.CharField(max_length=100, unique=True, editable=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    accepted = models.BooleanField(default=False, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Invitation for {self.email}"

@@ -37,6 +37,19 @@ CORS_ALLOWED_ORIGINS = [
     "https://www.fixdesk.ng",
 ]
 
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "ngrok-skip-browser-warning",
+]
+
 # Application definition
 
 INSTALLED_APPS = [

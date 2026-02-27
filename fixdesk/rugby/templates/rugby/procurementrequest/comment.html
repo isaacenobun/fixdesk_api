@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Comment — Rugby School Nigeria</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F0F2F5;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F0F2F5;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(15,43,60,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0F2B3C 0%,#1A4A63 100%);padding:32px 40px;text-align:center;">
+              <img src="{% static 'rugby/img/Rugby_schools.png' %}" alt="Rugby School Nigeria" width="160" height="48" style="display:block;margin:0 auto 12px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr>
+                  <td style="width:40px;height:2px;background-color:#C8A951;"></td>
+                  <td style="width:16px;"></td>
+                  <td style="width:8px;height:8px;background-color:#C8A951;border-radius:50%;"></td>
+                  <td style="width:16px;"></td>
+                  <td style="width:40px;height:2px;background-color:#C8A951;"></td>
+                </tr>
+              </table>
+              <p style="color:#C8A951;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin:12px 0 0;font-weight:600;">New Comment on pro-req-{{ id }}</p>
+            </td>
+          </tr>
+
+          <!-- Gold Accent Bar -->
+          <tr>
+            <td style="height:4px;background:linear-gradient(90deg,#C8A951,#E8D490,#C8A951);"></td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px;">
+              <h1 style="color:#0F2B3C;font-size:22px;font-weight:700;margin:0 0 8px;">New Comment Added</h1>
+              <p style="color:#6B7280;font-size:14px;margin:0 0 24px;">Hello, someone commented on a procurement request you're following.</p>
+
+              <!-- Context: Related Item -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+                <tr>
+                  <td style="padding:14px 20px;background-color:#F8FAFB;border-radius:8px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="color:#6B7280;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Ticket</td>
+                        <td style="color:#0F2B3C;font-size:14px;font-weight:600;text-align:right;">{{ title }}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Comment Card -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr>
+                  <td style="padding:20px 24px;background-color:#FFFFFF;border:1px solid #E5E7EB;border-radius:12px;">
+                    <!-- Commenter Info -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+                      <tr>
+                        <td style="width:40px;vertical-align:top;">
+                          <table role="presentation" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td style="width:40px;height:40px;background-color:#0F2B3C;border-radius:50%;text-align:center;vertical-align:middle;color:#C8A951;font-size:16px;font-weight:700;">
+                                {{ commenter_initial }}
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                        <td style="padding-left:12px;vertical-align:center;">
+                          <p style="color:#0F2B3C;font-size:14px;font-weight:600;margin:0;">{{ commenter }}</p>
+                          <p style="color:#9CA3AF;font-size:12px;margin:2px 0 0;">{{ date }}</p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Divider -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+                      <tr>
+                        <td style="height:1px;background-color:#E5E7EB;"></td>
+                      </tr>
+                    </table>
+
+                    <!-- Comment Body -->
+                    <p style="color:#4B5563;font-size:14px;line-height:1.7;margin:0;">{{ description }}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              {% if action_url %}
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr>
+                  <td style="background-color:#0F2B3C;border-radius:8px;">
+                    <a href="https://rugbyschool/fixdesk.ng" target="_blank" style="display:inline-block;padding:14px 32px;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;letter-spacing:0.5px;">
+                      View & Reply
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              {% endif %}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#0F2B3C;padding:32px 40px;text-align:center;">
+              <p style="color:#C8A951;font-size:13px;font-weight:600;margin:0 0 4px;">Rugby School Nigeria</p>
+              <p style="color:#8BA4B5;font-size:12px;margin:0 0 16px;">Helpdesk System</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr>
+                  <td style="width:60px;height:1px;background-color:#1A4A63;"></td>
+                </tr>
+              </table>
+              <p style="color:#5A7A8F;font-size:11px;margin:16px 0 0;line-height:1.5;">
+                This is an automated notification from the Rugby School Nigeria Helpdesk.<br>
+                Please do not reply directly to this email.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

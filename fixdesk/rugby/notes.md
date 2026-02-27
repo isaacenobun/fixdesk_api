@@ -1,0 +1,7 @@
+- Edit ticket status options (submitted, In Progress, Resolved)
+- Can tasks be assigned across departments - NO
+- Allow task assignment to more than one staff - YES
+- When choosing milestones, the due date picker should not be higher than the task due date
+- Task status should just be (Not Started, In Progress, Completed)
+- Add the mentioning functionality for all comments - NO NEED right now
+- Implement search on all the lengthy dropdowns (users, procurement cost center codes)

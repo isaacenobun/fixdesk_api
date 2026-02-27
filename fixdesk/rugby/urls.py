@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    UserViewSet, IssuesViewSet, MilestoneViewSet, CommentsViewSet, PaymentViewSet, DepartmentsViewSet, ActivityLogViewSet, LeaveRequestViewSet, FacilityRequestViewSet, ProcurementRequestViewSet, Comments_RequestsViewSet, TasksViewSet, microsoft_login
+    UserViewSet, IssuesViewSet, MilestoneViewSet, CommentsViewSet, PaymentViewSet, DepartmentsViewSet, ActivityLogViewSet, LeaveRequestViewSet, FacilityRequestViewSet, ProcurementRequestViewSet, Comments_RequestsViewSet, TasksViewSet, microsoft_login, generate_upload_url
     )
 
 router = DefaultRouter()
@@ -21,4 +21,5 @@ router.register(r'tasks', TasksViewSet, basename='task')
 urlpatterns = [
     path('', include(router.urls)),
     path("auth/microsoft/", microsoft_login, name="microsoft_login"),
+    path("generate-upload-url/", generate_upload_url, name="generate_upload_url"),
 ]

@@ -114,7 +114,7 @@ def microsoft_login(request):
         )
 
     # Create / get user
-    user, _ = User.objects.get_or_create(
+    user, _ = User.objects.get(
         email=email,
         defaults={"email": email}
     )

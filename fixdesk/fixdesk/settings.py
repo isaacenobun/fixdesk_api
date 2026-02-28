@@ -38,6 +38,7 @@ CSRF_TRUSTED_ORIGINS = ["https://*.fixdesk-api.onrender.com", "https://*.app.fix
 CORS_ALLOWED_ORIGINS = [
     "https://fixdesk.ng",
     "https://www.fixdesk.ng",
+    "https://rugbyschool.fixdesk.ng",
 ]
 
 CORS_ALLOW_HEADERS = [
